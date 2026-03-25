@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fredoka", sans-serif;
+  
+  --color-kids-pink: #FF85A1;
+  --color-kids-blue: #4CC9F0;
+  --color-kids-yellow: #F9C74F;
+  --color-kids-green: #90BE6D;
+  --color-kids-purple: #B5179E;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Inter:wght@400;600&display=swap');
+
+body {
+  background-color: #FDFCF0;
+  color: #333;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.canvas-container {
+  touch-action: none;
+}
+
+.btn-pop {
+  transition: transform 0.1s active;
+}
+
+.btn-pop:active {
+  transform: scale(0.9);
+}

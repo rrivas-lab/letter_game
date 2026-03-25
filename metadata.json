@@ -1,0 +1,5 @@
+{
+  "name": "Aventura de Letras",
+  "description": "Un juego interactivo y divertido para que niños de 5 años aprendan a trazar letras con guía de voz.",
+  "requestFramePermissions": ["microphone"]
+}
