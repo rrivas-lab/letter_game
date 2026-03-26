@@ -86,7 +86,11 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
     }
   }));
 
-  const [isRevealed, setIsRevealed] = useState(helpLevel !== 'minimal' || forceReveal);
+  const [isRevealed, setIsRevealed] = useState(true);
+  const lastXRef = useRef<number>(0);
+  const lastYRef = useRef<number>(0);
+  const lastMidXRef = useRef<number | null>(null);
+  const lastMidYRef = useRef<number | null>(null);
 
   // Update revealed state when props change
   useEffect(() => {
@@ -101,12 +105,26 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
     // Clear the canvas
     ctx.clearRect(0, 0, width, height);
     
+    // Draw a subtle paper texture
+    ctx.fillStyle = '#FDFCF0';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Subtle grid/dots for a "notebook" feel
+    ctx.fillStyle = '#E5E7EB';
+    const dotSpacing = 30;
+    for (let x = dotSpacing/2; x < width; x += dotSpacing) {
+      for (let y = dotSpacing/2; y < height; y += dotSpacing) {
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // Background for mystery card
     if (helpLevel === 'minimal' && !isRevealed) {
-      ctx.fillStyle = '#F9FAFB'; 
+      ctx.fillStyle = 'rgba(249, 250, 251, 0.8)'; 
       ctx.fillRect(0, 0, width, height);
       
-      // Add some subtle pattern
       ctx.strokeStyle = '#F3F4F6';
       ctx.lineWidth = 2;
       for (let i = -width; i < width + height; i += 20) {
@@ -118,57 +136,44 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
     }
     
     // Base letter guide
-    const fontSize = Math.floor(height * 0.75);
-    ctx.font = `bold ${fontSize}px "Fredoka", "Arial", sans-serif`;
+    const fontSize = Math.floor(height * 0.8);
+    ctx.font = `600 ${fontSize}px "Fredoka", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
     const centerX = width / 2;
-    const centerY = height / 2 + (height * 0.02);
+    const centerY = height / 2 + (height * 0.05);
     
+    // Always show the letter in a clean style for selection
+    ctx.fillStyle = '#4B5563'; // Dark gray for visibility
+    ctx.fillText(letter, centerX, centerY);
+
     if (helpLevel === 'full') {
-      // Background letter
-      ctx.fillStyle = '#F3F4F6'; // gray-100
-      ctx.fillText(letter, centerX, centerY);
+      // Elegant dashed guide for tracing
+      ctx.strokeStyle = '#D1D5DB';
+      ctx.setLineDash([20, 15]);
+      ctx.lineWidth = 15;
+      ctx.lineCap = 'round';
+      ctx.strokeText(letter, centerX, centerY);
       
-      // Dashed guide
-      ctx.strokeStyle = '#4B5563'; // gray-600 (darker)
-      ctx.setLineDash([15, 15]);
-      ctx.lineWidth = 12; // Thicker
+      ctx.strokeStyle = '#9CA3AF';
+      ctx.setLineDash([2, 30]);
+      ctx.lineWidth = 6;
       ctx.strokeText(letter, centerX, centerY);
       ctx.setLineDash([]);
-    } else if (helpLevel === 'medium') {
-      ctx.fillStyle = '#F3F4F6'; // gray-100
-      ctx.fillText(letter, centerX, centerY);
-      ctx.strokeStyle = '#9CA3AF'; // gray-400
-      ctx.lineWidth = 3;
-      ctx.strokeText(letter, centerX, centerY);
-    } else {
-      if (isRevealed) {
-        ctx.fillStyle = '#F3F4F6'; // gray-100
-        ctx.fillText(letter, centerX, centerY);
-        ctx.strokeStyle = '#D1D5DB'; // gray-300
-        ctx.lineWidth = 1;
-        ctx.strokeText(letter, centerX, centerY);
-      } else {
-        // Mystery card state
-        ctx.fillStyle = '#9CA3AF'; // gray-400
-        ctx.font = `bold ${Math.floor(height * 0.5)}px "Fredoka", "Arial", sans-serif`;
-        ctx.fillText('?', centerX, centerY);
-      }
     }
 
-    // Create mask for completion check
+    // Create mask for completion check (keep it simple/solid for math)
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = width;
     maskCanvas.height = height;
     const mctx = maskCanvas.getContext('2d');
     if (mctx) {
-      mctx.font = `bold ${fontSize}px "Fredoka", "Arial", sans-serif`;
+      mctx.font = `600 ${fontSize}px "Fredoka", sans-serif`;
       mctx.textAlign = 'center';
       mctx.textBaseline = 'middle';
       mctx.fillStyle = 'black';
-      mctx.fillText(letter, width / 2, height / 2 + (height * 0.02));
+      mctx.fillText(letter, width / 2, height / 2 + (height * 0.05));
       
       const imageData = mctx.getImageData(0, 0, width, height);
       let count = 0;
@@ -283,18 +288,6 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     if (isSuccess) return;
     
-    if (!isRevealed) {
-      setIsRevealed(true);
-      // We need to redraw the background immediately to show the letter
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) drawBackground(ctx, canvas.width, canvas.height);
-      }
-    }
-
-    setIsDrawing(true);
-    setHasDrawn(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -304,12 +297,34 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
     const x = ('touches' in e) ? e.touches[0].clientX - rect.left : (e as React.MouseEvent).clientX - rect.left;
     const y = ('touches' in e) ? e.touches[0].clientY - rect.top : (e as React.MouseEvent).clientY - rect.top;
 
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = 30; // Thicker for easier tracing
-    ctx.strokeStyle = color;
+    // If we are in "Find" mode (onSuccess is present)
+    if (onSuccess) {
+      if (isTarget) {
+        setIsSuccess(true);
+        controls.start({
+          scale: [1, 1.2, 1],
+          rotate: [0, 10, -10, 0],
+          transition: { duration: 0.5, ease: "easeInOut" }
+        });
+        onSuccess();
+      } else {
+        // Visual feedback for wrong choice
+        controls.start({
+          x: [-10, 10, -10, 10, 0],
+          transition: { duration: 0.4 }
+        });
+        onFailure?.();
+      }
+      return;
+    }
+
+    setIsDrawing(true);
+    setHasDrawn(true);
+    
+    lastXRef.current = x;
+    lastYRef.current = y;
+    lastMidXRef.current = x;
+    lastMidYRef.current = y;
 
     // Small bounce on start
     controls.start({
@@ -322,7 +337,7 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
       x, y, 
       size: Math.random() * 15 + 10, 
       life: 1, 
-      color: '#FFFFFF' // Sparkle color
+      color: '#FFFFFF'
     });
   };
 
@@ -337,21 +352,60 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
     const x = ('touches' in e) ? e.touches[0].clientX - rect.left : (e as React.MouseEvent).clientX - rect.left;
     const y = ('touches' in e) ? e.touches[0].clientY - rect.top : (e as React.MouseEvent).clientY - rect.top;
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    // Smoothing with midpoints
+    const midX = (lastXRef.current + x) / 2;
+    const midY = (lastYRef.current + y) / 2;
+
+    if (lastMidXRef.current !== null && lastMidYRef.current !== null) {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      // Layer 1: Depth Shadow
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(lastMidXRef.current, lastMidYRef.current);
+      ctx.quadraticCurveTo(lastXRef.current, lastYRef.current, midX, midY);
+      ctx.lineWidth = 32;
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(0,0,0,0.1)';
+      ctx.shadowOffsetY = 4;
+      ctx.stroke();
+      ctx.restore();
+
+      // Layer 2: Main Vibrant Body
+      ctx.beginPath();
+      ctx.moveTo(lastMidXRef.current, lastMidYRef.current);
+      ctx.quadraticCurveTo(lastXRef.current, lastYRef.current, midX, midY);
+      ctx.lineWidth = 32;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      // Layer 3: Glossy Highlight
+      ctx.beginPath();
+      ctx.moveTo(lastMidXRef.current, lastMidYRef.current);
+      ctx.quadraticCurveTo(lastXRef.current, lastYRef.current, midX, midY);
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.stroke();
+    }
+
+    lastMidXRef.current = midX;
+    lastMidYRef.current = midY;
+    lastXRef.current = x;
+    lastYRef.current = y;
 
     // Add sparkle particles
-    if (Math.random() > 0.7) {
+    if (Math.random() > 0.6) {
       particlesRef.current.push({
-        x: x + (Math.random() - 0.5) * 20,
-        y: y + (Math.random() - 0.5) * 20,
-        size: Math.random() * 8 + 4,
+        x: x + (Math.random() - 0.5) * 30,
+        y: y + (Math.random() - 0.5) * 30,
+        size: Math.random() * 10 + 5,
         life: 1,
         color: '#FFFFFF'
       });
     }
     
-    // Check progress periodically while drawing
     if (Math.random() > 0.9) {
       checkCompletion();
     }
@@ -423,7 +477,7 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
           className="absolute inset-0 pointer-events-none border-4 border-kids-blue/30 rounded-3xl"
         />
       )}
-      {isRevealed && isSuccess && (
+      {isSuccess && (
         <motion.div 
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -431,11 +485,6 @@ export const LetterCanvas = forwardRef<LetterCanvasHandle, LetterCanvasProps>(({
         >
           <div className="text-6xl">✨</div>
         </motion.div>
-      )}
-      {!isRevealed && (
-        <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">¡Toca para descubrir!</span>
-        </div>
       )}
     </motion.div>
   );

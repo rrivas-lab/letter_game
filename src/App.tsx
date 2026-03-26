@@ -287,24 +287,15 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex-1 w-full flex flex-col gap-3 py-2 relative h-full min-h-[300px]">
-                  {/* Hint Button */}
-                  <div className="absolute -top-6 right-0 z-30">
-                    <button 
-                      onClick={handleHint}
-                      className="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border-2 border-kids-yellow/30 text-kids-yellow flex items-center gap-2 hover:bg-white transition-colors"
-                    >
-                      <Star className="w-4 h-4 fill-kids-yellow" />
-                      <span className="text-xs font-bold">Pista</span>
-                    </button>
-                  </div>
-
                   {options.map((opt, idx) => (
                     <motion.div 
                       key={`${opt}-${idx}`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       animate={wrongSelection === idx ? { x: [-5, 5, -5, 5, 0] } : {}}
                       transition={{ duration: 0.4, ease: "linear" }}
-                      className={`flex-1 relative w-full bg-white rounded-3xl border-4 border-dashed overflow-hidden shadow-md transition-all min-h-[60px] ${
-                        wrongSelection === idx ? 'border-red-400 bg-red-50' : 'border-gray-200'
+                      className={`flex-1 relative w-full bg-white rounded-3xl border-4 overflow-hidden shadow-md transition-all min-h-[80px] cursor-pointer ${
+                        wrongSelection === idx ? 'border-red-400 bg-red-50' : 'border-kids-blue/20 hover:border-kids-blue/50'
                       }`}
                     >
                       <LetterCanvas 
@@ -313,7 +304,6 @@ export default function App() {
                         color={currentColor} 
                         isTarget={opt === currentLetter}
                         helpLevel="minimal"
-                        forceReveal={isHintActive}
                         onSuccess={handleComplete}
                         onFailure={() => handleFailure(idx)}
                       />
